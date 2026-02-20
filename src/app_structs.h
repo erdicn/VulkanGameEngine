@@ -7,9 +7,6 @@
 #include <GLFW/glfw3.h>
 #include <cglm/cglm.h>
 
-// #include "nuklear-glfw-vulkan.h"
-// #include "nuklear.h"
-#include "overlay.h"
 #if defined (__cplusplus ) && defined (USE_IMGUI) 
     #include "imgui/backends/imgui_impl_vulkan.h"
 #endif
@@ -57,9 +54,6 @@ typedef struct UIVars{
     VkPipeline graphics_pipeline;
     VkPipelineLayout triangle_pipeline_layout;
     VkPipeline triangle_graphics_pipeline;
-
-    
-    overlay_settings_t settings;
 }UIVars_t;
 
 typedef struct ImguiVars{
