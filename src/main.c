@@ -4,9 +4,11 @@
     #include "imgui/imgui.h"
     #include "imgui/backends/imgui_impl_glfw.h"
     #include "imgui/backends/imgui_impl_vulkan.h"
-#else 
-    #define IM_COUNTOF(_ARR)            ((int)(sizeof(_ARR) / sizeof(*(_ARR))))     // Size of a static C-style array. Don't use on pointers! Defined in imgui.h
+// #else 
+    // #define IM_COUNTOF(_ARR)            ((int)(sizeof(_ARR) / sizeof(*(_ARR))))     // Size of a static C-style array. Don't use on pointers! Defined in imgui.h
 #endif
+
+
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -17,14 +19,25 @@
 // #include <cglm/mat4.h>  
 #include <cglm/cglm.h>
 
-
-
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+// For sleep
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
+
+void mySleep(uint64_t sleep_in_ms){
+    //sleep:
+    #ifdef _WIN32
+    Sleep(pollingDelay);
+    #else
+    usleep(sleep_in_ms*1000);  /* sleep for sllep_in_ms milliSeconds */
+    #endif
+}
 
 #include "app_structs.h"
 #include "testing.h"
@@ -57,7 +70,7 @@ static csarray_t validation_layers = {.len = 0, .str_arr = layers};
 
 
 #if defined (__cplusplus ) && defined (USE_IMGUI) 
-ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.f);//ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 #endif
 
 
@@ -67,6 +80,8 @@ ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 // static VkQueue graphics_queue;
 // static VkQueue present_queue;
+
+const char* extensions[MAX_EXTENSIONS];
 
 static void framebufferResizeCaalback(GLFWwindow* window, int width, int height){
     // this gets the app that we passed through the glfwSetWindowUserPointer(app->window, app); 
@@ -99,7 +114,7 @@ const char** getRequiredExtensions(uint32_t* nb_extentions) {
         fprintf(stderr, "Too many extensions!\n");
         return NULL;
     }
-    for(int i = 0; i < glfwExtensionCount; i++){
+    for(size_t i = 0; i < glfwExtensionCount; i++){
         extensions[i] = (char*) glfwExtensions[i];
     }
     extensions[glfwExtensionCount] = "VK_EXT_debug_utils";
@@ -148,152 +163,6 @@ void createInstance(VkInstance* instance){
 
 void createSurface(AppVariables_t* app){
     testVK(glfwCreateWindowSurface(app->instance, app->window, NULL, &app->surface));
-}
-
-VkShaderModule createShaderModule(AppVariables_t* app, Shader_t* code) {
-    VkShaderModuleCreateInfo createInfo=ZERO_INIT;
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = code->len;
-    createInfo.pCode = (const uint32_t*)(code->code);
-
-    VkShaderModule shaderModule;
-    testVK(vkCreateShaderModule(app->device, &createInfo, NULL, &shaderModule));
-
-    return shaderModule;
-}
-
-void createGraphicsPipeline(AppVariables_t* app) {
-    Shader_t vertShaderCode , fragShaderCode ;
-    vertShaderCode.code = readFile("shadervert.spv", &vertShaderCode.len);
-    fragShaderCode.code = readFile("shaderfrag.spv", &fragShaderCode.len);
-
-    VkShaderModule vertShaderModule = createShaderModule(app, &vertShaderCode);
-    VkShaderModule fragShaderModule = createShaderModule(app, &fragShaderCode);
-    free(vertShaderCode.code);
-    free(fragShaderCode.code);
-
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = ZERO_INIT;
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertShaderModule;
-    vertShaderStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo = ZERO_INIT;
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = ZERO_INIT;
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    // vertexInputInfo.vertexBindingDescriptionCount = 0;
-    // vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    VkVertexInputBindingDescription bindingDescription = vert2GetBindingDescription();
-    uint32_t attribute_description_len = 2;
-    VkVertexInputAttributeDescription attributeDescriptions[attribute_description_len];
-    vert2GetAttributeDescriptions(attributeDescriptions, &attribute_description_len);
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)(attribute_description_len);
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = ZERO_INIT;
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-    VkPipelineViewportStateCreateInfo viewportState = ZERO_INIT;
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.scissorCount  = 1;
-
-    VkPipelineRasterizationStateCreateInfo rasterizer = ZERO_INIT;
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.lineWidth   = 1.0f;
-    rasterizer.cullMode    = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace   = VK_FRONT_FACE_CLOCKWISE;
-    rasterizer.depthBiasEnable = VK_FALSE;
-
-    VkPipelineMultisampleStateCreateInfo multisampling = ZERO_INIT;
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable  = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.minSampleShading = 1.0f; // Optional
-    multisampling.pSampleMask = NULL; // Optional
-    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
-    multisampling.alphaToOneEnable = VK_FALSE; // Optional
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = ZERO_INIT;
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
-
-    VkPipelineColorBlendStateCreateInfo colorBlending = ZERO_INIT;
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp       = VK_LOGIC_OP_COPY;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
-    colorBlending.blendConstants[0] = 0.0f;
-    colorBlending.blendConstants[1] = 0.0f;
-    colorBlending.blendConstants[2] = 0.0f;
-    colorBlending.blendConstants[3] = 0.0f;
-
-    uint32_t dynamic_state_size = 2;
-    VkDynamicState dynamicStates[] = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicState = ZERO_INIT;
-    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = (uint32_t)(dynamic_state_size);
-    dynamicState.pDynamicStates = dynamicStates;
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = ZERO_INIT;
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    #ifdef USE_OVERLAY
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &app->descriptor_set_Layout;
-    #endif
-
-    testVK(vkCreatePipelineLayout(app->device, &pipelineLayoutInfo, NULL, &app->pipeline_layout));
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = ZERO_INIT;
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssembly;
-    pipelineInfo.pViewportState = &viewportState;
-    pipelineInfo.pRasterizationState = &rasterizer;
-    pipelineInfo.pMultisampleState = &multisampling;
-    // pipelineInfo.pDepthStencilState = NULL; // Optional
-    pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.pDynamicState = &dynamicState;
-    pipelineInfo.layout = app->pipeline_layout;
-    pipelineInfo.renderPass = app->render_pass;
-    pipelineInfo.subpass = 0;
-    // to create from existing pipeline
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-    // pipelineInfo.basePipelineIndex = -1; // Optional
-
-    testVK(vkCreateGraphicsPipelines(app->device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &app->graphics_pipeline));
-
-    vkDestroyShaderModule(app->device, fragShaderModule, NULL);
-    vkDestroyShaderModule(app->device, vertShaderModule, NULL);
 }
 
 // void createDescriptorPool(AppVariables_t* app) {
@@ -793,13 +662,14 @@ void drawFrame(AppVariables_t* app){
     #endif
 
     vkResetFences(app->device, 1, &app->in_flight_fences[app->current_frame]);
-    vkResetCommandPool(app->device, app->command_pool, 0);
+    
+    //  vkResetCommandPool(app->device, app->command_pool, 0);
+
     vkResetCommandBuffer(app->command_buffers[app->current_frame], 0);
     // fprintf(stderr, "POTATO\n");
     // fprintf(stderr, "%d Can we come here ?\n", __LINE__);
     VkSubmitInfo submitInfo = ZERO_INIT;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    VkSemaphore signalSemaphores[] = {app->render_finished_semaphores[app->current_frame]};
 
 
     #if defined (__cplusplus ) && defined (USE_IMGUI) 
@@ -848,6 +718,7 @@ void drawFrame(AppVariables_t* app){
 
         ImGui_ImplVulkan_RenderDrawData(app->imgui_vars.draw_data, app->command_buffers[app->current_frame]);
         vkCmdEndRenderPass(app->command_buffers[app->current_frame]);
+        VkSemaphore signalSemaphores[] = {app->render_finished_semaphores[image_index]};
         {
             VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             // VkSubmitInfo info = {};
@@ -869,6 +740,7 @@ void drawFrame(AppVariables_t* app){
         recordCommandBuffer(app->command_buffers[app->current_frame], image_index, app);
         VkSemaphore waitSemaphores[] = {app->image_available_semaphores[app->current_frame]};
         VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkSemaphore signalSemaphores[] = {app->render_finished_semaphores[image_index]};
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
@@ -895,7 +767,7 @@ void drawFrame(AppVariables_t* app){
 
     result = vkQueuePresentKHR(app->present_queue, &presentInfo);
 
-    if(result == VK_ERROR_OUT_OF_DATE_KHR || VK_SUBOPTIMAL_KHR || 
+    if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || 
        app->frame_buffer_resized){
         app->frame_buffer_resized = false;
         recreateSwapChain(app);
@@ -931,34 +803,70 @@ void updateFPS(AppVariables_t* app) {
     }
 }
 
+
+static int pressed_key = -1;
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
+    pressed_key = key;
+}
+
+uint64_t potato = 0;
+bool wireframe = false;
+void stuffTodoEveryFrame(AppVariables_t* app){
+    int state = glfwGetKey(app->window, GLFW_KEY_E);
+    if (state == GLFW_PRESS)
+    {
+        // printf("E key pressed\n");
+        // glfwWaitEventsTimeout(1); // TODO better sleep function so one input is enough
+        vkDeviceWaitIdle(app->device);
+        vkDestroyPipeline(app->device, app->graphics_pipeline, NULL);
+        vkDestroyPipelineLayout(app->device, app->pipeline_layout, NULL);
+        if(wireframe) createGraphicsPipelineCustom(app, &app->graphics_pipeline, &app->pipeline_layout, VK_POLYGON_MODE_LINE, "shadervert.spv", "shaderfrag.spv");
+        else createGraphicsPipelineCustom(app, &app->graphics_pipeline, &app->pipeline_layout, VK_POLYGON_MODE_FILL, "shadervert.spv", "shaderfrag.spv");
+        wireframe = !wireframe;
+        mySleep(200); // Since when we change to wireframe we need it ocasionally we can afford to sleep better TODO better alternative with glfw
+    }
+    glfwSetKeyCallback(app->window, keyCallback);
+    
+    switch (pressed_key){
+        case GLFW_KEY_RIGHT:
+            for(size_t i = 0; i < app->vertices->len; i++){
+                        app->vertices->vert[i].pos[0] += 0.001;
+            }
+            break;
+        case GLFW_KEY_LEFT:
+            for(size_t i = 0; i < app->vertices->len; i++){
+                        app->vertices->vert[i].pos[0] -= 0.001;
+            }
+            break;
+        case GLFW_KEY_UP:
+            for(size_t i = 0; i < app->vertices->len; i++){
+                        app->vertices->vert[i].pos[1] -= 0.001;
+            }
+            break;
+        case GLFW_KEY_DOWN:
+            for(size_t i = 0; i < app->vertices->len; i++){
+                        app->vertices->vert[i].pos[1] += 0.001;
+            }
+            break;
+        
+        default:
+            break;
+    }
+    // pressed_key = -1;
+
+    updateVertexBuffer(app);
+
+    drawFrame(app);
+    #ifndef __cplusplus
+        updateFPS(app);
+    #endif
+}
+
 void mainLoop(AppVariables_t* app){
     while(!glfwWindowShouldClose(app->window)) {
         glfwPollEvents();
-        // nk_glfw3_new_frame();
-        // // Define GUI
-        // if (nk_begin(app->UI.nk_ctx, "My Window", nk_rect(50, 50, 200, 200),
-        //     NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE)) {
-        //     nk_layout_row_dynamic(app->UI.nk_ctx, 30, 1);
-        //     if (nk_button_label(app->UI.nk_ctx, "Exit")) {
-        //         glfwSetWindowShouldClose(app->window, 1);
-        //     }
-        // }
-        // nk_end(app->UI.nk_ctx);
 
-        for(size_t i = 0; i < app->vertices->len; i++){
-            app->vertices->vert[i].pos[0] += 0.001;
-        }
-        
-        // vkDestroyBuffer(app->device, app->vertex_buffer, NULL);
-        // vkFreeMemory(app->device, app->vertex_buffer_memory, NULL);
-        updateVertexBuffer(app);
-        // memcpy(app->vertex_persitent_buffer_mapped_ptr, app->vertices->vert, 
-        //        sizeof(Vertex2D_t) * app->vertices->len);
-        
-        // nk_glfw3_render(0, app->graphics_queue, app->current_frame, app->image_available_semaphores); // Draws the UI on top
-
-        drawFrame(app);
-        updateFPS(app);
+        stuffTodoEveryFrame(app);
     }
 
     vkDeviceWaitIdle(app->device);
@@ -969,6 +877,10 @@ void cleanup(AppVariables_t* app){
     #ifdef INCLUDE_OVERLAY
         shutdown_overlay();
     #endif
+    #if defined (__cplusplus ) && defined (USE_IMGUI)
+        ImGui_ImplVulkan_Shutdown();
+    #endif
+
     cleanupSwapChain(app);
 
     vkDestroyBuffer(app->device, app->index_buffer, NULL);
@@ -1040,7 +952,7 @@ uint32_t indice_vals[] = {0, 1, 2, 2, 3, 0};
 ArrUint32_t indices = { .len = 6, .vals = indice_vals};
 
 #if defined (__cplusplus ) && defined (USE_IMGUI) 
-void InitImGui(AppVariables_t* app){
+void InitImGuiAndMainLoop(AppVariables_t* app){
     IMGUI_CHECKVERSION();
 
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
@@ -1101,6 +1013,7 @@ void InitImGui(AppVariables_t* app){
     app->imgui_vars.show_demo_window = true;
     app->imgui_vars.show_another_window = false;
 
+    // TODO make it so the simulation runs with window closed too
     // Main loop
     int i = 0;
     while (!glfwWindowShouldClose(app->window))
@@ -1180,16 +1093,13 @@ void InitImGui(AppVariables_t* app){
             app->imgui_vars.clear_color.color.float32[3] = clear_color.w;
             // FrameRender(wd, draw_data);
             app->imgui_vars.draw_data = draw_data;
-
-            for(size_t i = 0; i < app->vertices->len; i++){
-                app->vertices->vert[i].pos[0] += 0.001;
-            }
-            updateVertexBuffer(app);
-
-            drawFrame(app);
             // FramePresent(wd);
+            
+            stuffTodoEveryFrame(app);
         }
+
     }
+    vkDeviceWaitIdle(app->device);
 }
 #endif
 
@@ -1214,10 +1124,9 @@ void initApp(AppVariables_t* app){
 void freeApp(AppVariables_t* app){
     free(app->vertices);
     free(app->indices);
+    free(app->validation_layers);
     // free(app);
 }
-
-
 
 int mainVulkan(){
     // testCGLM();
@@ -1230,17 +1139,13 @@ int mainVulkan(){
     initVulkan(&app_vars);
     printf("Entering main loop\n");
     #if defined (__cplusplus ) && defined (USE_IMGUI)
-        InitImGui(&app_vars);
-        ImGui_ImplVulkan_Shutdown();
+        InitImGuiAndMainLoop(&app_vars);
     #else
         mainLoop(&app_vars); 
     #endif
 
     printf("Cleanup started\n");
-    // #ifdef INCLUDE_OVERLAY
-    //     shutdown_overlay();
-    // #endif
-    cleanup(&app_vars);//window, instance, debug_messenger);
+    cleanup(&app_vars);
     freeApp(&app_vars);
     return 0;
 }

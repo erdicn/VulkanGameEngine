@@ -1,10 +1,11 @@
+#include "defines.h"
 #include <vulkan/vulkan.h>
 #include <string.h>
 #include <stdlib.h>
 #include "vertex2D.h"
 
 VkVertexInputBindingDescription vert2GetBindingDescription() {
-    VkVertexInputBindingDescription bindingDescription = {0};
+    VkVertexInputBindingDescription bindingDescription = ZERO_INIT;
     bindingDescription.binding = 0;
     bindingDescription.stride = sizeof(Vertex2D_t);
     // VK_VERTEX_INPUT_RATE_VERTEX:   Move to the next data entry after each vertex
@@ -19,7 +20,7 @@ void vert2GetAttributeDescriptions(VkVertexInputAttributeDescription* attribute_
         abort();
     }
     // *attribute_description_len = 2;
-    // attribute_descriptions[2] = {0};
+    // attribute_descriptions[2] = ZERO_INIT;
 
     attribute_descriptions[0].binding = 0;
     attribute_descriptions[0].location = 0;

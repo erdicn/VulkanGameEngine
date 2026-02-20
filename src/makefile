@@ -1,16 +1,26 @@
-CC = g++
-
-# NUKLEAR_DIR = /home/erdi/Programs/Nuklear
-# NUKLEAR_DIR2 = /home/erdi/Programs/nuklear-glfw-vulkan
-# NUKLEAR_DIR3 = /home/erdi/Programs/nuklear-glfw-vulkan/nuklearshaders
 
 INCLUDES = -I./imgui # -I/home/erdi/Programs/cimgui # -I$(NUKLEAR_DIR) -I$(NUKLEAR_DIR2) # -I$(NUKLEAR_DIR3) 
-CFLAGS = -O3 -Wall # -Wextra -Wno-Wunused-parameter -Wno-Wunused-variable  -Wno-Wunused-const-variable=
+CFLAGS = -O3 #-Wall # -Wextra -Wno-Wunused-parameter -Wno-Wunused-variable  -Wno-Wunused-const-variable=
 LDFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi -lm  $(INCLUDES)
 GLSLC = /home/erdi/Programs/Vulkan/default/x86_64/bin/glslc
 
-SRCS    = $(wildcard *.c) $(wildcard *.cpp) $(wildcard imgui/*.cpp) imgui/backends/imgui_impl_vulkan.cpp imgui/backends/imgui_impl_glfw.cpp
-HEADERS = $(wildcard *.h) $(wildcard *.hpp) $(wildcard imgui/*.h)   imgui/backends/imgui_impl_vulkan.h   imgui/backends/imgui_impl_glfw.h
+# CC = g++
+# SRCS    = $(wildcard *.c) $(wildcard *.cpp) $(wildcard imgui/*.cpp) imgui/backends/imgui_impl_vulkan.cpp imgui/backends/imgui_impl_glfw.cpp
+# HEADERS = $(wildcard *.h) $(wildcard *.hpp) $(wildcard imgui/*.h)   imgui/backends/imgui_impl_vulkan.h   imgui/backends/imgui_impl_glfw.h
+# CFLAGS := -Wall
+
+CC = gcc
+SRCS    = $(wildcard *.c) # $(wildcard *.cpp) $(wildcard imgui/*.cpp) imgui/backends/imgui_impl_vulkan.cpp imgui/backends/imgui_impl_glfw.cpp
+HEADERS = $(wildcard *.h) # $(wildcard *.hpp) $(wildcard imgui/*.h)   imgui/backends/imgui_impl_vulkan.h   imgui/backends/imgui_impl_glfw.h
+CFLAGS := -Wall
+
+# CC = nvcc
+# SRCS    = $(wildcard *.c) $(wildcard *.cpp) $(wildcard imgui/*.cpp) imgui/backends/imgui_impl_vulkan.cpp imgui/backends/imgui_impl_glfw.cpp
+# HEADERS = $(wildcard *.h) $(wildcard *.hpp) $(wildcard imgui/*.h)   imgui/backends/imgui_impl_vulkan.h   imgui/backends/imgui_impl_glfw.h
+# CFLAGS := --compiler-options -Wall
+
+
+
 TARGET = VulkanTest
 
 OBJS := $(SRCS:.c=.o)

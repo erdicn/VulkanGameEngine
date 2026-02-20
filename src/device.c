@@ -2,7 +2,7 @@
 #include "debug_messenger.h"
 #include "swapchain.h"
 
-const char* extensions[MAX_EXTENSIONS];
+// const char* extensions[MAX_EXTENSIONS];
 const char* device_extension_names[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 csarray_t device_extensions = {.len = 1, .str_arr = device_extension_names};
 
@@ -53,7 +53,7 @@ void pickPhysicalDevice(AppVariables_t* app){
         fprintf(stderr, "failed to find GPUs with Vulkan support!");
     }
 
-    for (int i = 0; i < deviceCount; i++) {
+    for (size_t i = 0; i < deviceCount; i++) {
         if (isDeviceSuitable(devices[i], app)) {
             app->physical_device = devices[i];
             VkPhysicalDeviceProperties device_properties;
@@ -92,6 +92,7 @@ void createLogicalDevice(AppVariables_t* app){
     }
 
     VkPhysicalDeviceFeatures device_features = ZERO_INIT;
+    device_features.fillModeNonSolid = true;
     VkDeviceCreateInfo create_info = ZERO_INIT;
     create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     create_info.queueCreateInfoCount = unique_count;

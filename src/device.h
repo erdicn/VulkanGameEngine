@@ -5,7 +5,7 @@
 #include <vulkan/vulkan.h>
 #include "app_structs.h"
 
-extern const char* extensions[MAX_EXTENSIONS];
+// extern const char* extensions[MAX_EXTENSIONS];
 extern const char* device_extension_names[];
 extern csarray_t device_extensions;
 

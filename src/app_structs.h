@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+#include <cglm/cglm.h>
 
 // #include "nuklear-glfw-vulkan.h"
 // #include "nuklear.h"
@@ -20,7 +21,12 @@
 #include "array.h"
 
 #define MAX_GARBGE_SIZE 2048
-#define MAX_FRAMES_IN_FLIGHT 2                         
+
+typedef struct UniformBufferObject {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} UniformBufferObject_t;
 
 typedef struct SwapChain{
     VkSwapchainKHR swap_chain;
@@ -60,6 +66,7 @@ typedef struct ImguiVars{
     #if defined (__cplusplus ) && defined (USE_IMGUI) 
         ImGui_ImplVulkanH_Window g_MainWindowData;
         ImDrawData* draw_data;
+        ImGuiIO* io;
     #endif
     VkDescriptorPool imgui_descriptor_pool;
     VkClearValue clear_color;

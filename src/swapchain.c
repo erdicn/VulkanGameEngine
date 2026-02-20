@@ -13,7 +13,7 @@ QueueFamilyIndices_t findQueueFamilies(VkPhysicalDevice device, AppVariables_t* 
     VkQueueFamilyProperties queueFamilies[queueFamilyCount];
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 
-    for (int i = 0; i < queueFamilyCount; i++) {
+    for (size_t i = 0; i < queueFamilyCount; i++) {
         if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             indices.graphicsFamily = i;
             indices.hasGraphicsFamily = true;
@@ -280,7 +280,7 @@ void createOverlayImages(AppVariables_t* app)
 
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(app->physical_device, &memProperties);
-        VkMemoryPropertyFlags properties;
+        // VkMemoryPropertyFlags properties;
         bool found = false;
         uint32_t j;
         for (j = 0; j < memProperties.memoryTypeCount; j++)

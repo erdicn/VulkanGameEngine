@@ -2,39 +2,7 @@
 #include "debug_messenger.h"
 #include "app_structs.h"
 #include "graphics_pipeline.h"
-
-static 
-char* readFile(const char* filename, size_t* out_size){
-    FILE* file = fopen(filename, "rb");
-
-    if (!file) {
-        fprintf(stderr, "failed to open file: %s\n", filename);
-        return NULL;
-    }
-
-    fseek(file, 0L, SEEK_END);
-    size_t fileSize = ftell(file);
-    rewind(file); 
-
-    char* buffer = (char*)malloc(fileSize);
-    if (!buffer) {
-        fprintf(stderr, "failed to allocate memory for file: %s\n", filename);
-        fclose(file);
-        return NULL;
-    }
-
-    size_t bytesRead = fread(buffer, 1, fileSize, file);
-    if (bytesRead != fileSize) {
-        fprintf(stderr, "failed to read file: %s\n", filename);
-        free(buffer);
-        fclose(file);
-        return NULL;
-    }
-
-    fclose(file);
-    *out_size = fileSize;
-    return buffer;
-}
+#include "file.h"
 
 static VkShaderModule createShaderModule(AppVariables_t* app, Shader_t* code) {
     VkShaderModuleCreateInfo createInfo={0};
@@ -110,8 +78,8 @@ void createOverlayGraphicsPipeline(AppVariables_t* app) {
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.lineWidth = 1.0f;
+    rasterizer.polygonMode = VK_POLYGON_MODE_LINE;//VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 0.1f;//1.0f;
     rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;

@@ -1,10 +1,14 @@
 #ifndef DEFINES_H
 #define DEFINES_H
+
 #define MAX_EXTENSIONS 128
+#define MAX_FRAMES_IN_FLIGHT 3
+
 // #define USE_OVERLAY
 // #define INCLUDE_OVERLAY
 #define USE_IMGUI
 // #define NDEBUG
+
 
 #ifdef __cplusplus
     #define ZERO_INIT {}
