@@ -15,9 +15,14 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-// #include <cglm/vec4.h>
-// #include <cglm/mat4.h>  
+#include <cglm/vec4.h>
+#include <cglm/mat4.h>  
 #include <cglm/cglm.h>
+
+// #include <glm/glm.hpp>
+// #include <chrono>
+// #include <glm/gtc/matrix_transform.hpp> // Required for rotate, lookAt, and perspective
+// #include <glm/gtc/type_ptr.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -195,24 +200,24 @@ void createDescriptorPool(AppVariables_t* app) {
     testVK(vkCreateDescriptorPool(app->device, &poolInfo, NULL, &app->descriptor_pool));
 }
 
-void createDescriptorSetLayout(AppVariables_t* app) {
-VkDescriptorSetLayoutBinding overlayLayoutBinding = ZERO_INIT;
-overlayLayoutBinding.binding = 0;
-overlayLayoutBinding.descriptorCount = 1;
-overlayLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-overlayLayoutBinding.pImmutableSamplers = NULL;
-overlayLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+// void createDescriptorSetLayout(AppVariables_t* app) {
+// VkDescriptorSetLayoutBinding overlayLayoutBinding = ZERO_INIT;
+// overlayLayoutBinding.binding = 0;
+// overlayLayoutBinding.descriptorCount = 1;
+// overlayLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+// overlayLayoutBinding.pImmutableSamplers = NULL;
+// overlayLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = ZERO_INIT;
-descriptorSetLayoutCreateInfo.sType =
-    VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-descriptorSetLayoutCreateInfo.bindingCount = 1;
-descriptorSetLayoutCreateInfo.pBindings = &overlayLayoutBinding;
+// VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = ZERO_INIT;
+// descriptorSetLayoutCreateInfo.sType =
+//     VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+// descriptorSetLayoutCreateInfo.bindingCount = 1;
+// descriptorSetLayoutCreateInfo.pBindings = &overlayLayoutBinding;
 
-testVK(vkCreateDescriptorSetLayout(app->device, &descriptorSetLayoutCreateInfo,
-                                NULL,
-                                &app->descriptor_set_Layout));
-}
+// testVK(vkCreateDescriptorSetLayout(app->device, &descriptorSetLayoutCreateInfo,
+//                                 NULL,
+//                                 &app->descriptor_set_layout));
+// }
 
 void createDescriptorSets(AppVariables_t* app) {
 uint32_t numFbs = app->swap_chain.frame_buffers_len;
@@ -220,7 +225,7 @@ app->descriptor_sets = (VkDescriptorSet*)realloc(app->descriptor_sets, numFbs*si
 
 VkDescriptorSetLayout layouts[numFbs];
 for (uint32_t i = 0; i < numFbs; i++) {
-    layouts[i] = app->descriptor_set_Layout;
+    layouts[i] = app->descriptor_set_layout;
 }
 
 VkDescriptorSetAllocateInfo allocInfo = ZERO_INIT;
@@ -548,6 +553,35 @@ void updateVertexBuffer(AppVariables_t* app){
     vkFreeMemory(app->device, staging_buffer_memory, NULL);
 }
 
+void updateUniformBuffer(uint32_t current_image,  void* uniform_buffers_mapped, AppVariables_t* app){
+    static double start_time = 0.0;
+    static bool first_run = true;
+    if (first_run) {
+        start_time = glfwGetTime();
+        first_run = false;
+    }
+    float time = (float)(glfwGetTime() - start_time);
+
+    UniformBufferObject_t ubo = ZERO_INIT;
+
+    glm_mat4_identity(ubo.model);
+    vec3 rot_axis = {0.0f, 0.0f, 1.0f};
+    glm_rotate(ubo.model, time * glm_rad(90.0f), rot_axis);
+
+    vec3 eye    = {2.0f, 2.0f, 2.0f};
+    vec3 center = {0.0f, 0.0f, 0.0f};
+    vec3 up     = {0.0f, 0.0f, 1.0f};
+    glm_lookat(eye, center, up, ubo.view);
+
+    float aspect = (float)app->swap_chain.extend.width / (float)app->swap_chain.extend.height;
+    glm_perspective(glm_rad(45.0f), aspect, 0.1f, 10.0f, ubo.proj);
+
+    ubo.proj[1][1] *= -1.0f;
+
+    memcpy(app->uniform_buffers_mapped[current_image], &ubo, sizeof(ubo));
+
+}
+
 void createIndexBuffer(AppVariables_t* app) {
     VkDeviceSize buffer_size = sizeof(app->indices->vals[0]) * app->indices->len;
 
@@ -568,6 +602,34 @@ void createIndexBuffer(AppVariables_t* app) {
     vkFreeMemory(app->device, staging_buffer_memory, NULL);
 }
 
+void createDescriptorSetLayout(AppVariables_t* app){
+    VkDescriptorSetLayoutBinding ubo_layout_binding = ZERO_INIT;
+    ubo_layout_binding.binding = 0; // used binding in shader
+    ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    ubo_layout_binding.descriptorCount = 1; // for now transfering 1 buffer
+    ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // can be a combination
+    ubo_layout_binding.pImmutableSamplers = NULL; // optional sampling related
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = ZERO_INIT;
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &ubo_layout_binding;
+
+    testVK(vkCreateDescriptorSetLayout(app->device, &layoutInfo, NULL, &app->descriptor_set_layout));
+
+}
+
+void createUniformBuffers(AppVariables_t* app){
+    VkDeviceSize buffer_size = sizeof(UniformBufferObject_t);
+
+    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+        createBuffer(app, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &app->uniform_buffers[i], &app->uniform_buffers_memories[i]);
+        testVK(vkMapMemory(app->device, app->uniform_buffers_memories[i], 0, buffer_size, 0, &app->uniform_buffers_mapped[i])); // TODO not sure of the test here 
+    }
+}
+
+
+
 void initVulkan(AppVariables_t* app){
     app->current_frame = 0;
     app->frame_buffer_resized = false; 
@@ -578,41 +640,24 @@ void initVulkan(AppVariables_t* app){
     createLogicalDevice(app);
     createSwapChain(app);
     // createSwapChainImageViews(app);
-    #ifdef USE_OVERLAY
-        createOverlayImages(app);
-        createOverlayImageViews(app);
-    #endif
+
     createImageViews(app);
     createRenderPass(app);
 
     createFramebuffers(app); 
 
     createDescriptorPool(app);
-     #ifdef USE_OVERLAY
-        createDescriptorSetLayout(app);
-        createDescriptorPool(app);
-        createDescriptorSets(app);
-    #endif
+    createDescriptorSetLayout(app);
     createGraphicsPipeline(app);
-
-    #ifdef USE_OVERLAY  
-        app->overlay.graphics_pipeline = app->graphics_pipeline;
-        // createOverlayGraphicsPipeline(app);
-    #endif
     
-
     createCommandPool(app);
     createVertexBuffer(app);
     createIndexBuffer(app);
     // createPersistentVertexBuffer(app);
 
+    createUniformBuffers(app);
     createCommandBuffers(app);
     createSyncObjects(app);
-
-        
-    #ifdef INCLUDE_OVERLAY
-        init_overlay(app);
-    #endif
 }   
 
 bool checkValidationLayerSupport() {
@@ -655,19 +700,14 @@ void drawFrame(AppVariables_t* app){
         testVK(result);
     }
 
-    #ifdef INCLUDE_OVERLAY
-        float old_bg_color[4] = {app->overlay.settings.bg_color[0], app->overlay.settings.bg_color[1],
-                                 app->overlay.settings.bg_color[2], app->overlay.settings.bg_color[3]};
-        VkSemaphore overlayFinished = submit_overlay(app, &app->overlay.settings, app->graphics_queue, image_index, NULL);
-    #endif
+    updateUniformBuffer(app->current_frame, app->uniform_buffers_mapped, app);
 
     vkResetFences(app->device, 1, &app->in_flight_fences[app->current_frame]);
     
     //  vkResetCommandPool(app->device, app->command_pool, 0);
 
     vkResetCommandBuffer(app->command_buffers[app->current_frame], 0);
-    // fprintf(stderr, "POTATO\n");
-    // fprintf(stderr, "%d Can we come here ?\n", __LINE__);
+
     VkSubmitInfo submitInfo = ZERO_INIT;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -803,7 +843,6 @@ void updateFPS(AppVariables_t* app) {
     }
 }
 
-
 static int pressed_key = -1;
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
     pressed_key = key;
@@ -872,16 +911,19 @@ void mainLoop(AppVariables_t* app){
     vkDeviceWaitIdle(app->device);
 } 
 
-
 void cleanup(AppVariables_t* app){
-    #ifdef INCLUDE_OVERLAY
-        shutdown_overlay();
-    #endif
     #if defined (__cplusplus ) && defined (USE_IMGUI)
         ImGui_ImplVulkan_Shutdown();
     #endif
 
     cleanupSwapChain(app);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(app->device, app->uniform_buffers[i], NULL);
+        vkFreeMemory(app->device, app->uniform_buffers_memories[i], NULL);
+    }
+
+    vkDestroyDescriptorSetLayout(app->device, app->descriptor_set_layout, NULL);
 
     vkDestroyBuffer(app->device, app->index_buffer, NULL);
     vkFreeMemory(app->device, app->index_buffer_memory, NULL);
@@ -947,7 +989,6 @@ Vertex2D_t vertices[] = {
     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
-
 uint32_t indice_vals[] = {0, 1, 2, 2, 3, 0};
 ArrUint32_t indices = { .len = 6, .vals = indice_vals};
 
@@ -1104,9 +1145,6 @@ void InitImGuiAndMainLoop(AppVariables_t* app){
 #endif
 
 
-
-
-
 void initApp(AppVariables_t* app){
     if (app == NULL) return;
     app->vertices = (ArrVertex2D_t*)malloc(sizeof(*app->vertices));
@@ -1118,6 +1156,7 @@ void initApp(AppVariables_t* app){
     app->validation_layers = (csarray_t*)malloc(sizeof(csarray_t));
     app->validation_layers->str_arr = validation_layers.str_arr;
     app->validation_layers->len     = validation_layers.len;
+
     // printf("%d %d %d %d %d\n", app->indices->vals[0], app->indices->vals[1], app->indices->vals[2], app->indices->vals[3], app->indices->len);
 }
 

@@ -5,7 +5,10 @@
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
-#include <cglm/cglm.h>
+// #include <cglm/vec4.h>
+#include <cglm/mat4.h>  
+// #include <cglm/cglm.h>
+// #include <glm/glm.hpp>
 
 #if defined (__cplusplus ) && defined (USE_IMGUI) 
     #include "imgui/backends/imgui_impl_vulkan.h"
@@ -112,9 +115,14 @@ typedef struct AppVariables{
 
     VkBuffer vertex_buffer;
     VkDeviceMemory vertex_buffer_memory;
+    void* vertex_persitent_buffer_mapped_ptr;
+    
     VkBuffer index_buffer;
     VkDeviceMemory index_buffer_memory;
-    void* vertex_persitent_buffer_mapped_ptr;
+
+    VkBuffer uniform_buffers[MAX_FRAMES_IN_FLIGHT];
+    VkDeviceMemory uniform_buffers_memories[MAX_FRAMES_IN_FLIGHT];
+    void* uniform_buffers_mapped[MAX_FRAMES_IN_FLIGHT];
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
@@ -124,7 +132,7 @@ typedef struct AppVariables{
     uint16_t garbabe_len;
 
     VkDescriptorPool descriptor_pool;
-    VkDescriptorSetLayout descriptor_set_Layout;
+    VkDescriptorSetLayout descriptor_set_layout;
     VkDescriptorSet* descriptor_sets;
     uint32_t descriptor_sets_len;
     
